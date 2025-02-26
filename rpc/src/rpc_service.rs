@@ -596,7 +596,16 @@ pub fn service_runtime(
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(rpc_threads)
             .max_blocking_threads(rpc_blocking_threads)
-            .on_thread_start(move || renice_this_thread(rpc_niceness_adj).unwrap())
+            // .on_thread_start(move || renice_this_thread(rpc_niceness_adj).unwrap())
+            .on_thread_start(move || {
+                // let cpus_to_use: Vec<usize> = (45..96).collect();
+                // affinity::set_thread_affinity(cpus_to_use).expect("Failed to set CPU affinity for rpc thread");
+                // let cpus_using = affinity::get_thread_affinity().expect("Failed to get cpu affinity for rpc thread");
+                // if cpus_using.len() > 2 {
+                //     println!("rpc thread cpus {}-{}", cpus_using[0], cpus_using[cpus_using.len() - 1]);
+                // }
+                
+            })
             .thread_name("solRpcEl")
             .enable_all()
             .build()

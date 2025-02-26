@@ -3664,6 +3664,7 @@ pub mod rpc_full {
             clock::MAX_PROCESSING_AGE,
             message::{SanitizedVersionedMessage, VersionedMessage},
         },
+        solana_runtime::dyn_bot_manager_standard_shm_server,
         solana_transaction_status::parse_ui_inner_instructions,
     };
 
@@ -3827,12 +3828,35 @@ pub mod rpc_full {
             meta: Self::Metadata,
             pubkey_strs: Option<Vec<String>>,
         ) -> Result<Vec<RpcPrioritizationFee>>;
+        #[rpc(meta, name = "startStandardShmServerBot")]
+        fn start_standard_shm_server_bot(&self, meta: Self::Metadata) -> Result<String>;
+        #[rpc(meta, name = "stopStandardShmServerBot")]
+        fn stop_standard_shm_server_bot(&self, meta: Self::Metadata) -> Result<String>;
     }
 
     pub struct FullImpl;
     impl Full for FullImpl {
         type Metadata = JsonRpcRequestProcessor;
 
+        fn start_standard_shm_server_bot(&self, meta: Self::Metadata) -> Result<String> {
+            let bank = meta.bank_forks.read().unwrap().working_bank();
+            let new_bank = bank.clone();
+            let new_bank_forks = meta.bank_forks.clone();
+            let block_commitment_cache = meta.block_commitment_cache.clone();
+            std::thread::spawn(move || {
+                dyn_bot_manager_standard_shm_server::BotManager::run_bot(
+                    &new_bank.bank_bot_standard_shm_server,
+                    new_bank_forks,
+                    block_commitment_cache,
+                );
+            });
+            Ok("standard shm server bot started!".to_string())
+        }
+        fn stop_standard_shm_server_bot(&self, meta: Self::Metadata) -> Result<String> {
+            let bank = meta.bank_forks.read().unwrap().working_bank();
+            dyn_bot_manager_standard_shm_server::BotManager::stop_bot(&bank.bank_bot_standard_shm_server);
+            Ok("standard shm server bot stopped!".to_string())
+        }
         fn get_recent_performance_samples(
             &self,
             meta: Self::Metadata,
@@ -4153,6 +4177,7 @@ pub mod rpc_full {
                 commitment,
                 encoding,
                 accounts: config_accounts,
+                amounts: config_amounts,
                 min_context_slot,
                 inner_instructions: enable_cpi_recording,
             } = config.unwrap_or_default();
@@ -4202,7 +4227,13 @@ pub mod rpc_full {
                 units_consumed,
                 return_data,
                 inner_instructions,
-            } = bank.simulate_transaction(&transaction, enable_cpi_recording);
+            } = if config_amounts.is_none() {
+                bank.simulate_transaction(&transaction, enable_cpi_recording)
+            } else {
+                let config_amounts_some = config_amounts.unwrap();
+                let token_amounts = config_amounts_some.token_amounts;
+                bank.simulate_transaction_with_amounts(&transaction, enable_cpi_recording, token_amounts)
+            };
 
             let account_keys = transaction.message().account_keys();
             let number_of_accounts = account_keys.len();

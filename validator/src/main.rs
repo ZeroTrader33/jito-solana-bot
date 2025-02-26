@@ -9,7 +9,7 @@ use {
         cli::{self, app, warn_for_deprecated_arguments, DefaultArgs},
         dashboard::Dashboard,
         ledger_lockfile, lock_ledger, new_spinner_progress_bar, println_name_value,
-        redirect_stderr_to_file,
+        // redirect_stderr_to_file,
     },
     clap::{crate_name, value_t, value_t_or_exit, values_t, values_t_or_exit, ArgMatches},
     console::style,
@@ -458,6 +458,15 @@ fn configure_banking_trace_dir_byte_limit(
 }
 
 pub fn main() {
+
+    let cpus_to_use: Vec<usize> = (7..37).collect();
+    affinity::set_thread_affinity(cpus_to_use).expect("Failed to set CPU affinity for validator main thread");
+    let cpus_using = affinity::get_thread_affinity().expect("Failed to get cpu affinity for validator main thread");
+    if cpus_using.len() > 2 {
+        println!("validator main cpus {}-{}", cpus_using[0], cpus_using[cpus_using.len() - 1]);
+    }
+
+
     let default_args = DefaultArgs::new();
     let solana_version = solana_version::version!();
     let cli_app = app(solana_version, &default_args);
@@ -1097,7 +1106,7 @@ pub fn main() {
         }
     };
     let use_progress_bar = logfile.is_none();
-    let _logger_thread = redirect_stderr_to_file(logfile);
+    // let _logger_thread = redirect_stderr_to_file(logfile);
 
     info!("{} {}", crate_name!(), solana_version);
     info!("Starting validator with: {:#?}", std::env::args_os());

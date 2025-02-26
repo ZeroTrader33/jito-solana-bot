@@ -94,6 +94,12 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 zstd = { workspace = true }
 
+hwloc = "0.5.0"
+uuid = { version = "1.0", features = ["v4"] }
+udp-proxy = { workspace = true }
+shared-mem = {workspace = true}
+shared_memory = "0.12.4"
+
 [lib]
 crate-type = ["lib"]
 name = "solana_runtime"

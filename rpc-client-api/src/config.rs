@@ -30,6 +30,11 @@ pub struct RpcSimulateTransactionAccountsConfig {
     pub addresses: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcSimulateTransactionTokenAmountsConfig {
+    pub token_amounts: Vec<(String, u64)>,
+}
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionConfig {
@@ -41,6 +46,7 @@ pub struct RpcSimulateTransactionConfig {
     pub commitment: Option<CommitmentConfig>,
     pub encoding: Option<UiTransactionEncoding>,
     pub accounts: Option<RpcSimulateTransactionAccountsConfig>,
+    pub amounts: Option<RpcSimulateTransactionTokenAmountsConfig>,
     pub min_context_slot: Option<Slot>,
     #[serde(default)]
     pub inner_instructions: bool,

@@ -5,7 +5,7 @@ use {
     solana_sdk::{
         account::AccountSharedData, clock::Slot, pubkey::Pubkey, transaction::SanitizedTransaction,
     },
-    std::collections::{HashMap, HashSet},
+    std::{collections::{HashMap, HashSet}, sync::atomic::Ordering},
 };
 
 #[derive(Default)]
@@ -64,15 +64,26 @@ impl AccountsDb {
         account: &AccountSharedData,
         txn: &Option<&SanitizedTransaction>,
         pubkey: &Pubkey,
-        write_version: u64,
+        _write_version: u64,
     ) {
-        if let Some(accounts_update_notifier) = &self.accounts_update_notifier {
+        // if let Some(accounts_update_notifier) = &self.accounts_update_notifier {
+        //     accounts_update_notifier.notify_account_update(
+        //         slot,
+        //         account,
+        //         txn,
+        //         pubkey,
+        //         write_version,
+        //     );
+        // }
+
+        let custom_notifier = unsafe { &*self.custom_update_notifier.load(Ordering::SeqCst) };
+        if let Some(accounts_update_notifier) = &custom_notifier {
             accounts_update_notifier.notify_account_update(
                 slot,
                 account,
                 txn,
                 pubkey,
-                write_version,
+                0,
             );
         }
     }

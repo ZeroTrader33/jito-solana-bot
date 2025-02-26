@@ -1,0 +1,22 @@
+[package]
+name = "shared-mem"
+description = "Blockchain, Rebuilt for Scale"
+documentation = "https://docs.rs/solana-stake-accounts"
+version = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+shared_memory = "0.12.4"
+solana-sdk = { workspace = true }
+raw_sync = "0.1"
+dashmap = "5.5.3"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lib]
+name = "shared_mem"

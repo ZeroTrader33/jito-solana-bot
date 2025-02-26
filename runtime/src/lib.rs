@@ -39,6 +39,9 @@ pub mod transaction_batch;
 pub mod verify_precompiles;
 pub mod vote_sender_types;
 
+pub mod bank_bot_standard_shm_server;
+pub mod dyn_bot_manager_standard_shm_server;
+
 #[macro_use]
 extern crate solana_metrics;
 #[macro_use]

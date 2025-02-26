@@ -22,6 +22,7 @@ mod geyser_plugin_utils;
 mod scan_account_storage;
 pub mod stats;
 pub mod tests;
+use std::sync::atomic::AtomicPtr;
 
 #[cfg(feature = "dev-context-only-utils")]
 use qualifier_attr::qualifiers;
@@ -1581,6 +1582,7 @@ pub struct AccountsDb {
 
     /// GeyserPlugin accounts update notifier
     accounts_update_notifier: Option<AccountsUpdateNotifier>,
+    pub custom_update_notifier: AtomicPtr<Option<AccountsUpdateNotifier>>,
 
     pub(crate) active_stats: ActiveStats,
 
@@ -2084,6 +2086,7 @@ impl AccountsDb {
             epoch_accounts_hash_manager: EpochAccountsHashManager::new_invalid(),
             latest_full_snapshot_slot: SeqLock::new(None),
             best_ancient_slots_to_shrink: RwLock::default(),
+            custom_update_notifier: AtomicPtr::new(Box::into_raw(Box::new(None))),
         };
 
         new.start_background_hasher();

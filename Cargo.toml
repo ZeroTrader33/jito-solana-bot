@@ -236,6 +236,13 @@ members = [
     "zk-keygen",
     "zk-sdk",
     "zk-token-sdk",
+    "udp-proxy", 
+    "udp-proxy-client",
+    "shared-mem",
+    "shared-mem-server",
+    "shared-mem-client",
+    "check-tx",
+    "decimal",
 ]
 
 exclude = [
@@ -687,6 +694,10 @@ x509-parser = "0.14.0"
 # See "zeroize versioning issues" below if you are updating this version.
 zeroize = { version = "1.7", default-features = false }
 zstd = "0.13.2"
+
+udp-proxy = { path = "udp-proxy", version = "=2.2.0" }
+shared-mem = { path = "shared-mem", version = "=2.2.0" }
+decimal = { path = "decimal", version = "=2.2.0" }
 
 [patch.crates-io]
 # for details, see https://github.com/anza-xyz/crossbeam/commit/fd279d707025f0e60951e429bf778b4813d1b6bf

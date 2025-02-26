@@ -179,23 +179,16 @@ use {
     solana_timings::{ExecuteTimingType, ExecuteTimings},
     solana_vote::vote_account::{VoteAccount, VoteAccountsHashMap},
     std::{
-        collections::{HashMap, HashSet},
-        convert::TryFrom,
-        fmt,
-        ops::{AddAssign, RangeFull, RangeInclusive},
-        path::PathBuf,
-        slice,
-        sync::{
+        collections::{HashMap, HashSet}, convert::TryFrom, fmt, ops::{AddAssign, RangeFull, RangeInclusive}, path::PathBuf, slice, str::FromStr, sync::{
             atomic::{
                 AtomicBool, AtomicI64, AtomicU64, AtomicUsize,
-                Ordering::{AcqRel, Acquire, Relaxed},
+                Ordering::{self, AcqRel, Acquire, Relaxed},
             },
             Arc, LockResult, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak,
-        },
-        thread::Builder,
-        time::{Duration, Instant},
+        }, thread::Builder, time::{Duration, Instant}
     },
 };
+use crate::dyn_bot_manager_standard_shm_server;
 pub use {
     partitioned_epoch_rewards::KeyedRewardsAndNumPartitions, solana_sdk::reward_type::RewardType,
 };
@@ -608,6 +601,7 @@ impl PartialEq for Bank {
             // Ignore new fields explicitly if they do not impact PartialEq.
             // Adding ".." will remove compile-time checks that if a new field
             // is added to the struct, this PartialEq is accordingly updated.
+            ..
         } = self;
         *blockhash_queue.read().unwrap() == *other.blockhash_queue.read().unwrap()
             && ancestors == &other.ancestors
@@ -964,6 +958,8 @@ pub struct Bank {
 
     /// Accounts stats for computing the bank hash
     bank_hash_stats: AtomicBankHashStats,
+
+    pub bank_bot_standard_shm_server: Arc<dyn_bot_manager_standard_shm_server::BotManager>,
 }
 
 #[derive(Debug)]
@@ -1095,6 +1091,14 @@ impl AtomicBankHashStats {
 
 impl Bank {
     fn default_with_accounts(accounts: Accounts) -> Self {
+
+        let bank_bot_standard_shm_server = dyn_bot_manager_standard_shm_server::BotManager::default();
+        let bot_mng_standard_shm_server_arc = Arc::new(bank_bot_standard_shm_server);
+        accounts.accounts_db.custom_update_notifier.store(
+            Box::into_raw(Box::new(Some(bot_mng_standard_shm_server_arc.clone()))),
+            Ordering::SeqCst,
+        );
+
         let mut bank = Self {
             skipped_rewrites: Mutex::default(),
             rc: BankRc::new(accounts),
@@ -1164,6 +1168,7 @@ impl Bank {
             stats_for_accounts_lt_hash: AccountsLtHashStats::default(),
             block_id: RwLock::new(None),
             bank_hash_stats: AtomicBankHashStats::default(),
+            bank_bot_standard_shm_server: bot_mng_standard_shm_server_arc
         };
 
         bank.transaction_processor =
@@ -1420,6 +1425,7 @@ impl Bank {
             stats_for_accounts_lt_hash: AccountsLtHashStats::default(),
             block_id: RwLock::new(None),
             bank_hash_stats: AtomicBankHashStats::default(),
+            bank_bot_standard_shm_server: parent.bank_bot_standard_shm_server.clone()
         };
 
         let (_, ancestors_time_us) = measure_us!({
@@ -1748,6 +1754,14 @@ impl Bank {
         ));
         info!("Loading Stakes took: {stakes_time}");
         let stakes_accounts_load_duration = now.elapsed();
+
+        let bank_bot_standard_shm_server = dyn_bot_manager_standard_shm_server::BotManager::default();
+        let bot_mng_standard_shm_server_arc = Arc::new(bank_bot_standard_shm_server);
+        bank_rc.accounts.accounts_db.custom_update_notifier.store(
+            Box::into_raw(Box::new(Some(bot_mng_standard_shm_server_arc.clone()))),
+            Ordering::SeqCst,
+        );
+
         let mut bank = Self {
             skipped_rewrites: Mutex::default(),
             rc: bank_rc,
@@ -1819,6 +1833,7 @@ impl Bank {
             stats_for_accounts_lt_hash: AccountsLtHashStats::default(),
             block_id: RwLock::new(None),
             bank_hash_stats: AtomicBankHashStats::new(&fields.bank_hash_stats),
+            bank_bot_standard_shm_server: bot_mng_standard_shm_server_arc
         };
 
         bank.transaction_processor =
@@ -3283,7 +3298,119 @@ impl Bank {
     ) -> TransactionSimulationResult {
         let account_keys = transaction.account_keys();
         let number_of_accounts = account_keys.len();
-        let account_overrides = self.get_account_overrides_for_simulation(&account_keys);
+        let mut account_overrides = self.get_account_overrides_for_simulation(&account_keys);
+        let batch = self.prepare_unlocked_batch_from_single_tx(transaction);
+        let mut timings = ExecuteTimings::default();
+
+        let LoadAndExecuteTransactionsOutput {
+            mut processing_results,
+            ..
+        } = self.load_and_execute_transactions(
+            &batch,
+            // After simulation, transactions will need to be forwarded to the leader
+            // for processing. During forwarding, the transaction could expire if the
+            // delay is not accounted for.
+            MAX_PROCESSING_AGE - MAX_TRANSACTION_FORWARDING_DELAY,
+            &mut timings,
+            &mut TransactionErrorMetrics::default(),
+            TransactionProcessingConfig {
+                account_overrides: Some(&account_overrides),
+                check_program_modification_slot: self.check_program_modification_slot,
+                compute_budget: self.compute_budget(),
+                log_messages_bytes_limit: None,
+                limit_to_load_programs: true,
+                recording_config: ExecutionRecordingConfig {
+                    enable_cpi_recording,
+                    enable_log_recording: true,
+                    enable_return_data_recording: true,
+                },
+                transaction_account_lock_limit: Some(self.get_transaction_account_lock_limit()),
+            },
+        );
+
+        let units_consumed =
+            timings
+                .details
+                .per_program_timings
+                .iter()
+                .fold(0, |acc: u64, (_, program_timing)| {
+                    (std::num::Saturating(acc)
+                        + program_timing.accumulated_units
+                        + program_timing.total_errored_units)
+                        .0
+                });
+
+        debug!("simulate_transaction: {:?}", timings);
+
+        let processing_result = processing_results
+            .pop()
+            .unwrap_or(Err(TransactionError::InvalidProgramForExecution));
+        let (post_simulation_accounts, result, logs, return_data, inner_instructions) =
+            match processing_result {
+                Ok(processed_tx) => match processed_tx {
+                    ProcessedTransaction::Executed(executed_tx) => {
+                        let details = executed_tx.execution_details;
+                        let post_simulation_accounts = executed_tx
+                            .loaded_transaction
+                            .accounts
+                            .into_iter()
+                            .take(number_of_accounts)
+                            .collect::<Vec<_>>();
+                        (
+                            post_simulation_accounts,
+                            details.status,
+                            details.log_messages,
+                            details.return_data,
+                            details.inner_instructions,
+                        )
+                    }
+                    ProcessedTransaction::FeesOnly(fees_only_tx) => {
+                        (vec![], Err(fees_only_tx.load_error), None, None, None)
+                    }
+                },
+                Err(error) => (vec![], Err(error), None, None, None),
+            };
+        let logs = logs.unwrap_or_default();
+
+        TransactionSimulationResult {
+            result,
+            logs,
+            post_simulation_accounts,
+            units_consumed,
+            return_data,
+            inner_instructions,
+        }
+    }
+    
+    /// Run transactions against a frozen bank without committing the results
+    pub fn simulate_transaction_with_amounts(
+        &self,
+        transaction: &impl TransactionWithMeta,
+        enable_cpi_recording: bool,
+        token_amounts: Vec<(String, u64)>,
+    ) -> TransactionSimulationResult {
+        assert!(self.is_frozen(), "simulation bank must be frozen");
+
+        self.simulate_transaction_with_amounts_unchecked(transaction, enable_cpi_recording, token_amounts)
+    }
+    pub fn simulate_transaction_with_amounts_unchecked(
+        &self,
+        transaction: &impl TransactionWithMeta,
+        enable_cpi_recording: bool,
+        token_amounts: Vec<(String, u64)>,
+    ) -> TransactionSimulationResult {
+        let account_keys = transaction.account_keys();
+        let number_of_accounts = account_keys.len();
+        let mut account_overrides = self.get_account_overrides_for_simulation(&account_keys);
+        for (address, amount) in token_amounts {
+            let key = Pubkey::from_str(address.as_str()).unwrap();
+            let mut account = self.get_account(&key).unwrap();
+            let data = account.data_as_mut_slice();
+            let amount_slice = amount.to_le_bytes();
+            let buf = &mut data[64..72];
+            buf.copy_from_slice(&amount_slice);
+            account_overrides.set_account(&key, Some(account));
+        }
         let batch = self.prepare_unlocked_batch_from_single_tx(transaction);
         let mut timings = ExecuteTimings::default();
 
