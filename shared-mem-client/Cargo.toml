@@ -36,7 +36,8 @@ spl-token = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 bs58 = { workspace = true }
-uint = { git = "https://github.com/raydium-io/parity-common", package = "uint" }
+# uint = { git = "https://github.com/raydium-io/parity-common", package = "uint" }
+uint = "=0.9.5"
 ruint = "1.3.0"
 num-traits = "0.2.19"
 decimal = {workspace = true}

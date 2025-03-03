@@ -497,19 +497,20 @@ impl JupBot {
 
         self.is_running.store(true, Ordering::SeqCst);
     }
-    pub fn run_top_routes(&self, edge_id: u32, atob: bool) ->bool {
+    pub fn run_top_routes(this: &Arc<JupBot>, edge_id: u32, atob: bool) ->bool {
         let mut bundle_sent = false;
-        let initial_route = self.get_top_route(edge_id, atob);
-        let expanded_route = self.expand_route_all(edge_id, &initial_route);
-        // let expanded_route = self.expand_route_all(edge_id, &expanded_route);
-        let top_route = expanded_route;
+        let initial_route = this.get_top_route(edge_id, atob);
+        // let expanded_route = this.expand_route_all(edge_id, &initial_route);
+        // let expanded_route = this.expand_route_all(edge_id, &expanded_route);
+        let top_route = initial_route;
 
         // let print_str1 = initial_route.iter().map(|a|a.0.to_string()).collect::<Vec<String>>().join("->");
         // let print_str2 = top_route.iter().map(|a|a.0.to_string()).collect::<Vec<String>>().join("->");
-        // println!("initial_route {}, expaned_route {}", print_str1, print_str2);
+        // println!("expanded_route len {}", expanded_route.len());
         // return true;
 
-        let rate_log = self.get_route_rate(&top_route);
+        let rate_log = this.get_route_rate(&top_route);
+
         if rate_log > 0.0001f64 && top_route.len() > 2 {
             // println!("rate_log: {}", rate_log);
             
@@ -517,7 +518,8 @@ impl JupBot {
             let percent = 10000u64;
             let exp_pnl = 0u64;
 
-            let ixs = self.get_versioned_txs_by_route(&top_route, initial_amount, percent, exp_pnl, false, vec![]);
+            let ixs = this.get_versioned_txs_by_route(&top_route, initial_amount, percent, exp_pnl, false, vec![]);
+            // return true;
             if ixs.len() <= 5 && ixs.len() >= 2 {
                 // determine initial_amount and exp_pnl
                 let min_input = 400_000u64;
@@ -527,19 +529,38 @@ impl JupBot {
                 let mut min_amount = min_input;
                 let mut bound_amount = min_input.checked_mul(10).unwrap();
                 let mut cus: Vec<u64> = vec![];
+                let sim_result: Arc<AtomicPtr<Vec<(u64, Vec<u64>, u64)>>> = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Vec::new()))));
+                /*
+                let mut thread_handles = Vec::new();
                 loop {
-                    let (sim_pnl, sim_cus) = self.get_simulated_pnl(&top_route, bound_amount, percent, exp_pnl);
-                    cus = sim_cus;
+                    let this_clone = this.clone();
+                    let first_sim_result_clone = sim_result.clone();
+                    let top_route_clone = top_route.clone();
+                    let handle = std::thread::spawn(move || {
+                        let first_sim_result_vec = unsafe{&mut * first_sim_result_clone.load(Ordering::SeqCst)};
+                        let result = this_clone.get_simulated_pnl(&top_route_clone, bound_amount, percent, exp_pnl);
+                        first_sim_result_vec.push((result.0, result.1, bound_amount));
+                    });
+                    thread_handles.push(handle);
+
                     // println!("1loop sim_pnl {}", sim_pnl);
-                    if sim_pnl < prev_pnl || bound_amount >= max_input {
+                    if bound_amount >= max_input {
                         break;
                     }
-                    min_amount = bound_amount;
-                    bound_amount = bound_amount.checked_mul(10).unwrap();
                     
-                    prev_pnl = sim_pnl;
+                    bound_amount = bound_amount.checked_mul(10).unwrap();
                 }
-                let ignore_unit = 1000;
+                for handle in thread_handles {
+                    handle.join().expect("getting pnl thread1 error");
+                }
+                let sim_result_vec = unsafe{&mut * sim_result.load(Ordering::SeqCst)};
+                let (sim_pnl, sim_cus, bound_amount_max) = sim_result_vec.iter().max_by(|x, y| x.0.cmp(&y.0)).unwrap();
+                cus = sim_cus.clone();
+                prev_pnl = *sim_pnl;
+                bound_amount = *bound_amount_max;
+                min_amount = bound_amount;
+
+                let ignore_unit = 100;
                 let allowed_amount_range = if min_amount.checked_div(ignore_unit).unwrap() == 0 {
                     ALLOWED_AMOUNT_CHANGE
                 } else {
@@ -553,37 +574,52 @@ impl JupBot {
                 };
                 let mut mid_amount: u64;
                 prev_pnl = 0;
+
+                let sim_result: Arc<AtomicPtr<Vec<(u64, Vec<u64>, u64)>>> = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Vec::new()))));
+                let mut thread_handles = Vec::new();
+
+                let mut loop_i = 0;
                 loop {
-                    mid_amount = min_amount + (max_amount - min_amount) / 2;
-                    
-                    if max_amount - min_amount < allowed_amount_range {
+                    mid_amount = min_amount + (max_amount - min_amount) * loop_i / ignore_unit;
+
+                    let this_clone = this.clone();
+                    let sim_result_clone = sim_result.clone();
+                    let top_route_clone = top_route.clone();
+                    let handle = std::thread::spawn(move || {
+                        let sim_result_vec_thread = unsafe{&mut * sim_result_clone.load(Ordering::SeqCst)};
+                        let result = this_clone.get_simulated_pnl(&top_route_clone, mid_amount, percent, exp_pnl);
+                        sim_result_vec_thread.push((result.0, result.1, mid_amount));
+                    });
+                    thread_handles.push(handle);
+
+                    loop_i += 1;
+
+                    if loop_i >= 100 {
                         break;
                     }
-        
-                    let (sim_pnl, sim_cus) = self.get_simulated_pnl(&top_route, mid_amount, percent, exp_pnl);
-                    
-                    // println!("2loop sim_pnl {}", sim_pnl);
-        
-                    if sim_pnl > prev_pnl {
-                        min_amount = mid_amount;
-                        prev_pnl = sim_pnl;
-                        cus = sim_cus;
-                    } else {
-                        max_amount = mid_amount;
-                    }
                 }
-
-
-                let determined_input = min_amount;
-                let exp_pnl = prev_pnl * 85 / 100;
+                for handle in thread_handles {
+                    handle.join().expect("getting pnl thread2 error");
+                }
+                let sim_result_vec = unsafe{&mut * sim_result.load(Ordering::SeqCst)};
+                let (sim_pnl, sim_cus, mid_amount_max) = sim_result_vec.iter().max_by(|x, y| x.0.cmp(&y.0)).unwrap();
+                cus = sim_cus.clone();
+                prev_pnl = *sim_pnl;
+                mid_amount = *mid_amount_max;
+                min_amount = mid_amount;
+                */
+                // let determined_input = min_amount;
+                // let exp_pnl = prev_pnl * 85 / 100;
+                let determined_input = 100_000_000;
+                let exp_pnl = 100_000;
                 
                 // return;
                 if exp_pnl > 10000 {
                     // println!("determined {}, exp pnl {}, cus {:#?}", determined_input, exp_pnl, cus);
-                    let final_ixs = self.get_versioned_txs_by_route(&top_route, determined_input, percent, exp_pnl, true, cus);
+                    let final_ixs = this.get_versioned_txs_by_route(&top_route, determined_input, percent, exp_pnl, true, cus);
                 
                     //send bundle
-                    self.bundle_sender.send_bundle(&final_ixs, true);
+                    this.bundle_sender.send_bundle(&final_ixs, true);
                     bundle_sent = true;
                     println!("bundle sent! route: {}, sim_pnl {}, input {}, rate_log {}", top_route.iter().map(|a|a.0.to_string()).collect::<Vec<String>>().join("->"), exp_pnl as f64 / 1_000_000_000f64, determined_input as f64 / 1_000_000_000f64, rate_log);
                 }
@@ -1075,12 +1111,12 @@ impl JupBot {
                     // println!("updating pool {:#?}", bot_edge.pool);
 
                     let old_rate_log_ab = bot_edge.rate_a_b_log;
-                    bot_edge.update_rate_ab(this);
+                    let (_, elapsed_ab) = measure_us!(bot_edge.update_rate_ab(this));
                     let new_rate_log_ab = bot_edge.rate_a_b_log;
                     let rate_log_change_ab = new_rate_log_ab - old_rate_log_ab;
 
                     let old_rate_log_ba = bot_edge.rate_b_a_log;
-                    bot_edge.update_rate_ba(this);
+                    let (_, elapsed_ba) = measure_us!(bot_edge.update_rate_ba(this));
                     let new_rate_log_ba = bot_edge.rate_b_a_log;
                     let rate_log_change_ba = new_rate_log_ba - old_rate_log_ba;
                     
@@ -1094,17 +1130,20 @@ impl JupBot {
                                 this.process_pair_cnt.store(process_cnt + 1, Ordering::SeqCst);
                                 let this_clone = this.clone();
                                 std::thread::spawn(move || {
-                                    let (bundle_sent, elapsed) = measure_us!(this_clone.run_top_routes(*edge_id, atob));
+                                    let (bundle_sent, elapsed) = measure_us!(JupBot::run_top_routes(&this_clone, *edge_id, atob));
                                     let process_cnt = this_clone.process_pair_cnt.load(Ordering::SeqCst);
                                     if  process_cnt > 0 {
                                         this_clone.process_pair_cnt.store(process_cnt - 1, Ordering::SeqCst);
                                     }
                                     if bundle_sent {
-                                        println!("{}ms elapsed!", elapsed / 1000);
+                                        println!("{}ms, {}ns , ab:{}ns, ba:{}ns, elapsed!", elapsed / 1000, elapsed, elapsed_ab, elapsed_ba);
                                     }
                                     
                                 });
 
+                            }
+                            else {
+                                println!("rpc_health error");
                             }
                         }
                         
@@ -1147,7 +1186,7 @@ impl JupBot {
                     let rpc_health = this.rpc_client.get_health();
                     if rpc_health.is_ok() {
                         this.process_pair_cnt.store(process_cnt + 1, Ordering::SeqCst);
-                        let (bundle_sent, elapsed) = measure_us!(this.run_top_routes(edge_id, atob));
+                        let (bundle_sent, elapsed) = measure_us!(JupBot::run_top_routes(this, edge_id, atob));
                         let process_cnt = this.process_pair_cnt.load(Ordering::SeqCst);
                         if  process_cnt > 0 {
                             this.process_pair_cnt.store(process_cnt - 1, Ordering::SeqCst);

@@ -242,7 +242,7 @@ members = [
     "shared-mem-server",
     "shared-mem-client",
     "check-tx",
-    "decimal",
+    "decimal", "shred-analyzer",
 ]
 
 exclude = [

@@ -70,8 +70,8 @@ use {
         },
         convert::TryInto,
         fmt::Write,
-        fs::{self, File},
-        io::{Error as IoError, ErrorKind},
+        fs::{self, File, OpenOptions},
+        io::{Error as IoError, ErrorKind, Write as FsWrite},
         ops::Bound,
         path::{Path, PathBuf},
         rc::Rc,
@@ -3784,6 +3784,16 @@ impl Blockstore {
             .collect();
         let data_shreds = data_shreds?;
 
+        // let encoded_shreds_content = format!("shreds {:#?}", data_shreds);
+        // let encoded_file_name = format!("shreds-{}-{}-{}", slot, completed_ranges[0].0, completed_ranges[0].1);
+        // let mut encoded_file = OpenOptions::new()
+        //     .write(true)
+        //     .create(true)
+        //     .truncate(true)
+        //     .open(encoded_file_name).expect("oppen error");
+        // encoded_file.write_all(encoded_shreds_content.as_bytes()).expect("write error");
+        // encoded_file.flush().expect("flush error");
+        
         completed_ranges
             .into_iter()
             .map(|(start_index, end_index)| {
@@ -3804,11 +3814,36 @@ impl Blockstore {
                         )))
                     })
                     .and_then(|payload| {
-                        bincode::deserialize::<Vec<Entry>>(&payload).map_err(|e| {
+
+                        // let encoded_shreds_content = format!("binary {:#?}", payload);
+                        // let encoded_file_name = format!("binary-{}-{}-{}", slot, start_index, end_index);
+                        // let mut encoded_file = OpenOptions::new()
+                        //     .write(true)
+                        //     .create(true)
+                        //     .truncate(true)
+                        //     .open(encoded_file_name).expect("oppen error");
+                        // encoded_file.write_all(encoded_shreds_content.as_bytes()).expect("write error");
+                        // encoded_file.flush().expect("flush error");
+
+                        let entries = bincode::deserialize::<Vec<Entry>>(&payload).map_err(|e| {
                             BlockstoreError::InvalidShredData(Box::new(bincode::ErrorKind::Custom(
                                 format!("could not reconstruct entries: {e:?}"),
                             )))
-                        })
+                        });
+                        // if entries.is_ok() {
+                        //     let entries_result = entries.unwrap_or_default();
+                        //     let encoded_shreds_content = format!("decoded {:#?}", entries_result);
+                        //     let encoded_file_name = format!("decoded-{}-{}-{}", slot, start_index, end_index);
+                        //     let mut encoded_file = OpenOptions::new()
+                        //         .write(true)
+                        //         .create(true)
+                        //         .truncate(true)
+                        //         .open(encoded_file_name).expect("oppen error");
+                        //     encoded_file.write_all(encoded_shreds_content.as_bytes()).expect("write error");
+                        //     encoded_file.flush().expect("flush error");
+                        //     return Ok(entries_result);
+                        // }
+                        entries
                     })
             })
             .flatten_ok()
