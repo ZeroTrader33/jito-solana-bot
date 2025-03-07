@@ -33,6 +33,7 @@ udp-proxy = { workspace = true }
 solana-program = { workspace = true }
 libc = "0.2.161"
 spl-token = { workspace = true }
+spl-token-2022 = { workspace = true, features = ["no-entrypoint"] }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 bs58 = { workspace = true }
@@ -43,11 +44,14 @@ num-traits = "0.2.19"
 decimal = {workspace = true}
 anchor-lang = { path = "../anchor/lang" }
 bytemuck = { version = "1.7", features = ["derive"] }
-
+solana-faucet = { workspace = true}
 solana-vote-program = {workspace = true}
-
+solana-test-validator = { workspace = true }
+solana-streamer = { workspace = true}
 jupiter-perpetuals-cpi = { path = "../jupiter-perpetuals-cpi" }
 rayon = "1.7"
+solana-runtime = { workspace = true, features = ["dev-context-only-utils"] }
+solana-runtime-transaction = { workspace = true }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

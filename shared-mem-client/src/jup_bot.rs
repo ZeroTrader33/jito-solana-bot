@@ -1,4 +1,10 @@
+use solana_faucet::faucet::run_local_faucet;
 use solana_rpc_client_api::bundles::RpcBundleSimulationSummary;
+use solana_runtime::bank::{Bank, TransactionSimulationResult};
+use solana_runtime_transaction::{runtime_transaction::RuntimeTransaction, transaction_with_meta::TransactionWithMeta};
+use solana_sdk::{account::WritableAccount, account::Account, fee_calculator::FeeRateGovernor, program_option::COption, program_pack::Pack, rent::Rent, transaction::{MessageHash, SanitizedTransaction}};
+use solana_streamer::socket::SocketAddrSpace;
+use solana_test_validator::{TestValidator, TestValidatorGenesis};
 
 use {
     crate::{bank_bot::PRICE_MULTIPLIER, big_num::{MulDiv, UnsafeMathTrait, U128}, invariant::{self, invariant_math}, orca_whirlpool, safe_math::SafeMath, u128x128_math::Rounding, utils_math::{safe_mul_shr_cast, safe_shl_div_cast}}, anchor_lang::solana_program::system_instruction::SystemInstruction, arrayref::{array_ref, array_refs}, borsh::{BorshDeserialize, BorshSerialize}, dashmap::DashMap, futures::{
@@ -14,10 +20,11 @@ use {
         }, thread::{sleep, spawn}, time::{Duration, UNIX_EPOCH}
     }, tokio::task::spawn_blocking
 };
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashSet};
 use std::cmp::Ordering as CmpOrdering;
 use std::f64;
 use rayon::prelude::*;
+use solana_program::bpf_loader_upgradeable::UpgradeableLoaderState;
 
 pub const RPC_ENDPOINT: &str = "http://127.0.0.1:8899";
 pub const WSS_ENDPOINT: &str = "ws://127.0.0.1:8900";
@@ -44,7 +51,44 @@ pub const JITO_TIP_ACCOUNTS: [&str; 8] = [
 
     "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT"
 ];
-
+pub const GENESIS_PROGRAMS: [&str; 36] = [
+    "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+    "SoLFiHG9TfgtdUXUjWAxi3LtvYuFyDLVhBWxdMZxyCe",
+    "ZERor4xhbUycZ6gb9ntrhqscUcZmAbQDjEAtCf4hbZY",
+    "2wT8Yq49kHgDzXuPxZSaeLaH1qbmGXtEyPy64bL7aD3c",
+    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+    "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+    "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP",
+    "AMM55ShdkoGRB5jVYPjWziwk8m5MpwyDgsMWHaMSQWH6",
+    "BSwp6bEBihVLdqJRKGgzjcGLHkcTuzmSo1TQkHepzH8p",
+    "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+    "CLMM9tUoggJu2wagPkkqs9eFG4BWhVBZWkP1qv3Sp7tR",
+    "CTMAxxk34HjKWxQ3QLZK1HpaLXmBveao3ESePXbiyfzh",
+    "CURVGoZn8zycx6FXwwevgBTB2gVvdbGTEpvMJDbgs2t4",
+    "Dooar9JkhdZ7J3LHN3A7YCuoGRUggXhQaG4kijfLGU2j",
+    "DSwpgjMvXhtGn6BsbqmacdBZyfLj6jSWf3HJpdJtmg6N",
+    "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB",
+    "FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X",
+    "GFXsSL5sSaDfNFQUYsHekbWBW1TsFdjDYzACh62tEHxn",
+    "H8W3ctz92svYg6mkn1UtGfu2aQr2fnUFHM1RhScEtQDt",
+    "HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt",
+    "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+    "MERLuDFBMmsHnsBPZw2sDQZHvXFMwp8EdjudcU2HKky",
+    "MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA",
+    "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb",
+    "PSwapMdSai8tjrEXcxFeQth87xC4rRsa4VA5mhGhXkP",
+    "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
+    "SSwapUtytfBdBn1b9NUGG6foMVPtcWgpRU32HToDUZr",
+    "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+    "SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1",
+    "SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8",
+    "treaf4wWBBty3fHdyBpo35Mz84M8k3heKXmjmi9vFt5",
+    "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+    "24Uqj9JCLxUeoC3hGfh5W3s9FM9uCHDS2SG3LYwBpyTi",
+    "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
+    "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
+    "5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h",
+];
 pub struct JupBot {
     pub is_running: AtomicBool,
     pub last_blockhash_timestamp: AtomicU64,
@@ -59,8 +103,11 @@ pub struct JupBot {
     pub chunk2_routes: AtomicPtr<HashMap<String, Vec<(String, String)>>>,
     pub payer: Keypair,
     pub tip_payer: Keypair,
+    pub user: Keypair,
     pub bundle_sender: udp_proxy::BundleSender,
     pub process_pair_cnt: AtomicU8,
+
+    pub test_validator: TestValidator
 }
 impl Default for JupBot {
     
@@ -72,7 +119,6 @@ impl Default for JupBot {
             is_running: AtomicBool::new(false),
             last_blockhash_timestamp: AtomicU64::new(0),
             latest_blockhash: AtomicPtr::new(Box::into_raw(Box::new(None))),
-            rpc_client,
             edges_pool_to_id: AtomicPtr::new(Box::into_raw(Box::new(HashMap::new()))),
             edges: AtomicPtr::new(Box::into_raw(Box::new(HashMap::new()))),
             // grouped_routes: AtomicPtr::new(Box::into_raw(Box::new(HashMap::new()))),
@@ -84,6 +130,9 @@ impl Default for JupBot {
             tip_payer,
             bundle_sender: udp_proxy::BundleSender::create(),
             process_pair_cnt: AtomicU8::new(0),
+            test_validator: Self::setup_validator(&rpc_client),
+            rpc_client,
+            user: signature::read_keypair_file("/mnt/user.json").unwrap()
         }
     }
 }
@@ -234,6 +283,18 @@ pub struct JupSwapEdge {
     cu_consumed_b_a: u64
 }
 impl JupSwapEdge {
+    
+    pub fn update_amount(&mut self, amount: u64, atob: bool) {
+        let position = self.amount_index as usize;
+        let replace_vec = amount.to_le_bytes().to_vec();
+        let buf = if atob {
+            &mut self.swap_ix_a_to_b.data[position..]
+        } else {
+            &mut self.swap_ix_a_to_b.data[position..]
+        };
+        let len = replace_vec.len().min(buf.len());
+        buf[..len].copy_from_slice(&replace_vec[..len]);
+    }
     pub fn update_rate_ab(&mut self, jup_bot: &JupBot) {
         let accounts: Option<RpcSimulateTransactionAccountsConfig> = Some(RpcSimulateTransactionAccountsConfig {
             encoding: Some(UiAccountEncoding::JsonParsed),
@@ -334,6 +395,160 @@ impl JupSwapEdge {
         
 
     }
+    pub fn calc_amount_out_ab(&mut self, jup_bot: &JupBot, value: u64, bank: &Arc<Bank>) -> (u64, u64) {
+        let input_amount = self.price_a * value;
+        self.update_amount(input_amount, true);
+
+        jup_bot.update_token_amount(&Pubkey::from_str(&self.ata_a).unwrap(), input_amount, bank);
+        jup_bot.update_token_amount(&Pubkey::from_str(&self.ata_b).unwrap(), 0, bank);
+
+        let ix = self.swap_ix_a_to_b.clone();
+        let sim_res = jup_bot.create_and_simulate_ix_svm(&[ix.clone()], &[], bank);
+        if sim_res.result.is_err() {
+            println!("error {:#?}", sim_res.result.err());
+            println!("error {:#?}", sim_res.logs);
+
+            return (input_amount, 0);
+        }
+        for post_account in sim_res.post_simulation_accounts.iter() {
+            if post_account.0.to_string().eq(&self.ata_b) {
+                let token_amount = jup_bot.get_amount_from_token_account(post_account.1.data());
+                return (input_amount, token_amount);
+            }
+        }
+        (input_amount, 0)
+    }
+    pub fn calc_amount_out_ba(&mut self, jup_bot: &JupBot, value: u64, bank: &Arc<Bank>) -> (u64, u64) {
+        let input_amount = self.price_b * value;
+        self.update_amount(input_amount, false);
+
+        jup_bot.update_token_amount(&Pubkey::from_str(&self.ata_b).unwrap(), input_amount, bank);
+        jup_bot.update_token_amount(&Pubkey::from_str(&self.ata_a).unwrap(), 0, bank);
+
+        let ix = self.swap_ix_b_to_a.clone();
+        let sim_res = jup_bot.create_and_simulate_ix_svm(&[ix.clone()], &[], bank);
+        if sim_res.result.is_err() {
+            println!("error {:#?}", sim_res.result.err());
+            println!("error {:#?}", sim_res.logs);
+
+            return (input_amount, 0);
+        }
+        for post_account in sim_res.post_simulation_accounts.iter() {
+            if post_account.0.to_string().eq(&self.ata_a) {
+                let token_amount = jup_bot.get_amount_from_token_account(post_account.1.data());
+                return (input_amount, token_amount);
+            }
+        }
+        (input_amount, 0)
+    }
+    pub fn generate_inout_table(&mut self, jup_bot: &JupBot) {
+        let bank = jup_bot.test_validator
+            .bank_forks()
+            .as_ref()
+            .read()
+            .unwrap()
+            .working_bank();
+        bank.unfreeze_for_ledger_tool();
+
+        let mut pubkeys = vec![];
+        for account_meta in self.swap_ix_a_to_b.accounts.iter() {
+            if !pubkeys.contains(&account_meta.pubkey) {
+                pubkeys.push(account_meta.pubkey);
+            }
+        }
+        for account_meta in self.swap_ix_b_to_a.accounts.iter() {
+            if !pubkeys.contains(&account_meta.pubkey) {
+                pubkeys.push(account_meta.pubkey);
+            }
+        }
+
+        for pubkey in pubkeys.iter() {
+            let account_res = jup_bot.rpc_client.get_account(pubkey);
+            if account_res.is_ok() {
+                let account = account_res.unwrap();
+                bank.store_account(&pubkey, &AccountSharedData::from(account.clone()));
+                // if account.executable {
+                //     if let Ok(UpgradeableLoaderState::Program {
+                //         programdata_address,
+                //     }) = account.deserialize_data()
+                //     {
+                //         let meta_res = jup_bot.rpc_client.get_account(&programdata_address);
+                //         if meta_res.is_ok() {
+                //             let meta = meta_res.unwrap();
+                //             bank.store_account(&programdata_address, &AccountSharedData::from(meta));
+                //         }
+                //     }
+                // }
+            }
+        }
+        // construct ata
+        let mint_a_key = Pubkey::from_str(&self.mint_a).unwrap();
+        let mint_a_res = jup_bot.rpc_client.get_account(&mint_a_key);
+        if mint_a_res.is_ok() {
+            let mint_a = mint_a_res.unwrap();
+            let account_data = JupBot::get_token_acount(mint_a_key, jup_bot.user.pubkey(), 0, mint_a.owner);
+            bank.store_account(&Pubkey::from_str(&self.ata_a).unwrap(), &account_data);
+        }
+        
+
+        let mint_b_key = Pubkey::from_str(&self.mint_b).unwrap();
+        let mint_b_res = jup_bot.rpc_client.get_account(&mint_b_key);
+        if mint_b_res.is_ok() {
+            let mint_b = mint_b_res.unwrap();
+            let account_data = JupBot::get_token_acount(mint_b_key, jup_bot.user.pubkey(), 0, mint_b.owner);
+            bank.store_account(&Pubkey::from_str(&self.ata_b).unwrap(), &account_data);
+        }
+        
+        
+
+        bank.store_account(
+            &jup_bot.user.pubkey(),
+            &AccountSharedData::new(
+                1_000_000_000_000_000,
+                0,
+                &Pubkey::from_str("11111111111111111111111111111111").unwrap(),
+            ),
+        );
+
+        let max_usd_to_send = JupBot::get_max_usd();
+        let min_usd_to_send = 1u64;
+        let mut table_ab = vec![(0u64, 0u64)];
+        let mut table_ba = vec![(0u64, 0u64)];
+        for usd_to_send in min_usd_to_send..max_usd_to_send {
+            let inout_ab = self.calc_amount_out_ab(jup_bot, usd_to_send, &bank);
+            let inout_ba = self.calc_amount_out_ba(jup_bot, usd_to_send, &bank);
+            table_ab.push(inout_ab);
+            table_ba.push(inout_ba);
+            break;
+        }
+
+        let serialized_content = serde_json::to_string(&*table_ab).unwrap();
+        println!("saving result to file");
+        let file_path = format!("/mnt/table/{}-ab.json", self.pool);
+        let mut inout_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(file_path)
+            .expect("error when creating file");
+        inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
+        inout_file.flush().expect("error when fluxh");
+
+        let serialized_content = serde_json::to_string(&*table_ba).unwrap();
+        println!("saving result to file");
+        let file_path = format!("/mnt/table/{}-ba.json", self.pool);
+        let mut inout_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(file_path)
+            .expect("error when creating file");
+        inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
+        inout_file.flush().expect("error when fluxh");
+        println!("saved result to file");
+
+    }
+    
     pub fn get_trade_jupswap_ix(accounts: &Vec<AccountMeta>, params: &TradeJupSwapParams) -> Instruction {
         // trace!();
         let program_id = Pubkey::from_str("botHDy47CNugroED1sxHfYeAiXwDKbgaa1WUeBvqnej").unwrap();
@@ -350,9 +565,113 @@ impl JupSwapEdge {
     }
 }
 impl JupBot {
+    pub fn get_token_acount(
+        mint: Pubkey,
+        owner: Pubkey,
+        amount: u64,
+        program_id: Pubkey,
+    ) -> AccountSharedData {
+        if program_id.eq(&spl_token_2022::id()) {
+            Self::get_token_account_2022(mint, owner, amount)
+        } else {
+            Self::get_token_account_old(mint, owner, amount)
+        }
+    }
+    pub fn get_token_account_2022(mint: Pubkey, owner: Pubkey, amount: u64) -> AccountSharedData {
+        let mut account_data = vec![0; spl_token_2022::state::Account::get_packed_len()];
+        let token_account = spl_token_2022::state::Account {
+            mint: mint,
+            owner,
+            delegate: COption::None,
+            amount,
+            state: spl_token_2022::state::AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::Some(owner),
+        };
+        spl_token_2022::state::Account::pack(token_account, &mut account_data).unwrap();
+        AccountSharedData::from(Account {
+            lamports: 2_158_000,
+            data: account_data.to_vec(),
+            owner: spl_token_2022::id(),
+            ..Account::default()
+        })
+    }
+    pub fn get_token_account_old(mint: Pubkey, owner: Pubkey, amount: u64) -> AccountSharedData {
+        let mut account_data = vec![0; spl_token::state::Account::get_packed_len()];
+        let token_account = spl_token::state::Account {
+            mint: mint,
+            owner,
+            delegate: COption::None,
+            amount,
+            state: spl_token::state::AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::Some(owner),
+        };
+        spl_token::state::Account::pack(token_account, &mut account_data).unwrap();
+        AccountSharedData::from(Account {
+            lamports: 2_040_000,
+            data: account_data.to_vec(),
+            owner: spl_token::id(),
+            ..Account::default()
+        })
+    }
+    pub fn generate_inout_table(this: &Arc<JupBot>) {
+        let bot_edges = unsafe{&mut * this.edges.load(Ordering::SeqCst)};
+        for (edge_id, edge) in bot_edges.iter_mut() {
+            // let time = std::time::Instant::now();
+            edge.generate_inout_table(this);
+            std::thread::sleep(Duration::from_millis(20000000));
+            // println!("edge gen time {}ns",time.elapsed().as_nanos());
+            
+        }
+    }
+    pub fn setup_validator(rpc_client: &Arc<RpcClient>) -> TestValidator {
+        // let mint_keypair = Keypair::new();
+        // let mint_pubkey = mint_keypair.pubkey();
+        // let faucet_addr = run_local_faucet(mint_keypair, None);
+        // let rpc_client = RpcClient::new_with_commitment(String::from(RPC_ENDPOINT), CommitmentConfig::processed());
+        let ledger_path = "/mnt/ledger";
+        let _ = fs::remove_dir_all(ledger_path);
+        let _ = fs::create_dir_all(ledger_path);
+
+        let mut test_validator_genesis = TestValidatorGenesis::default();
+        test_validator_genesis.ledger_path(std::path::PathBuf::from_str(ledger_path).unwrap());
+        test_validator_genesis.max_genesis_archive_unpacked_size = Some(u64::MAX);
+        test_validator_genesis.fee_rate_governor(FeeRateGovernor::new(0, 0));
+        test_validator_genesis.rent(Rent {
+            lamports_per_byte_year: 1,
+            exemption_threshold: 1.0,
+            ..Rent::default()
+        });
+        // test_validator_genesis.faucet_addr(Some(faucet_addr));
+
+        let test_validator_genesis = test_validator_genesis.clone_upgradeable_programs(
+            GENESIS_PROGRAMS
+                .iter()
+                .map(|program| Pubkey::from_str(program).unwrap())
+                .into_iter(),
+            &rpc_client,
+        ).expect("error clone programs");
+
+        let (test_validator, _mint_keypair) = test_validator_genesis
+            // .rpc_port(9901)
+            .start();
+        println!("test validator launched!");
+        let bank_forks = test_validator.bank_forks();
+        let bank = bank_forks.as_ref().read().unwrap().working_bank();
+        println!("Loaded Programs:");
+        println!("Program: {} | loaded: {}", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", bank.get_account(&Pubkey::from_str("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4").unwrap()).is_some());
+        test_validator
+    }
     pub fn setup(&self) {
+        self.setup_files();
+    }
+    pub fn setup_files(&self) {
         // reading edges
-        let edges_file_name = format!("/root/project/pairs_2024_12_05/jupEdges.json");
+        let edges_file_name = format!("/mnt/edges-solfi.json");
+        // let edges_file_name = format!("/root/project/pairs_2024_12_05/jupEdges.json");
         let edges_data = fs::read_to_string(edges_file_name).expect("Failed to read JSON file");
         let edges: Vec<JupSwapEdge> = serde_json::from_str(&edges_data).expect("Failed to parse JSON");
         let bot_edges = unsafe{&mut * self.edges.load(Ordering::SeqCst)};
@@ -385,6 +704,7 @@ impl JupBot {
         }
         println!("edges loaded! mints_base_pairs len = {}, mints len = {}", mints_base_pairs.len(), mints.len());
 
+        /*
         // construct chunk routes
         let chunk2_routes = unsafe{&mut * self.chunk2_routes.load(Ordering::SeqCst)};
         let mints_len = mints.len();
@@ -415,66 +735,11 @@ impl JupBot {
         }
 
         println!("chunk2_routes done! chunk2_routes len = {}", chunk2_routes.len());
-
-        /*
-        // reading routes
-        let routes_file_name = format!("/root/project/pairs_2024_12_05/u32_routes.json");
-        let routes_data = fs::read_to_string(routes_file_name).expect("Failed to read JSON file");
-        let routes: Vec<Vec<u32>> = serde_json::from_str(&routes_data).expect("Failed to parse JSON");
-
-        println!("routes json loaded!");
-
-        let manager = unsafe{&mut * self.manager.load(Ordering::SeqCst)};
-        let routes_len = routes.len();
-        for (index, route) in routes.iter().enumerate() {
-            if index % 1000000 == 0{
-                println!("grouping routes progress {}%", index * 100 / routes_len);
-            }
-            let mut swap_pairs: Vec<(u32, bool)> = Vec::new();
-            let mut skip_route = false;
-            for (edge_index, edge_id) in route.iter().enumerate() {
-                let edge_opt = bot_edges.get(edge_id);
-                if edge_opt.is_none(){
-                    continue;
-                }
-                let edge = bot_edges.get(edge_id).unwrap();
-                let mut ab = true;
-                if edge_index < route.len() - 1 {
-                    let next_edge_opt = bot_edges.get(&route[edge_index + 1]);
-                    if next_edge_opt.is_none(){
-                        skip_route = true;
-                        break;
-                    }
-                    else{
-                        let next_edge = next_edge_opt.unwrap();
-                        if edge.mint_a.eq(&next_edge.mint_a) || edge.mint_a.eq(&next_edge.mint_b) {
-                            ab = false;
-                        }
-                    }
-                    
-                }
-                else {
-                    let prev_edge_opt = bot_edges.get(&route[edge_index - 1]);
-                    if prev_edge_opt.is_none(){
-                        continue;
-                    }
-                    let prev_edge = prev_edge_opt.unwrap();
-                    if !edge.mint_a.eq(&prev_edge.mint_a) && !edge.mint_a.eq(&prev_edge.mint_b) {
-                        ab = false;
-                    }
-                }
-                swap_pairs.push((edge_id.clone(), ab));
-            }
-            if !skip_route {
-                manager.add_route(ArbitrageRoute { route_id: index, profit: 0f64, swap_pairs });
-            }
-            
-        }
-        println!("grouping finished!");
         */
 
          self.update_latest_blockhash_once();
 
+         /*
          // update all rates of edges
          let edges_len = bot_edges.len();
         for (index, bot_edge) in bot_edges.iter_mut() {
@@ -494,8 +759,91 @@ impl JupBot {
 
         }
         println!("all rates updated!");
+         */
 
         self.is_running.store(true, Ordering::SeqCst);
+    }
+    pub fn get_max_usd() -> u64 {
+        3000u64
+    }
+    pub fn get_amount_from_token_account(&self, token_account_info: &[u8]) -> u64 {
+        let input = array_ref![token_account_info, 0, 72];
+        let (_, amount_slice) = array_refs![input, 64, 8];
+
+        let vault_amount = u64::from_le_bytes(*amount_slice);
+
+        vault_amount
+    }
+    pub fn update_token_amount(&self, key: &Pubkey, amount: u64, bank: &Arc<Bank>) {
+        let shared_data_res = bank.get_account(key);
+        if shared_data_res.is_none() {
+            println!("account not found! {:#?}", key);
+            return;
+        }
+        let mut shared_data = shared_data_res.unwrap();
+        let position = 64 as usize;
+        let replace_vec = amount.to_le_bytes().to_vec();
+        let data = shared_data.data_as_mut_slice();
+        let buf = &mut data[position..];
+        let len = replace_vec.len().min(buf.len());
+        buf[..len].copy_from_slice(&replace_vec[..len]);
+        bank.store_account(key, &shared_data);
+    }
+    pub fn bank(&self) -> Arc<Bank> {
+        let bank_forks = self.test_validator.bank_forks();
+        let new_bank = bank_forks.as_ref().read().unwrap().working_bank();
+        // let new_slot = bank.slot()+1;
+        // let new_bank = Arc::new(Bank::new_from_parent(bank, &Pubkey::default(), new_slot));
+        new_bank.unfreeze_for_ledger_tool();
+        while new_bank.freeze_started() {
+            let ten_millis = std::time::Duration::from_millis(10);
+            std::thread::sleep(ten_millis);
+        }
+        new_bank
+    }
+    pub fn create_and_simulate_ix_svm(
+        &self,
+        txInstructions: &[Instruction],
+        lookuptables: &[AddressLookupTableAccount],
+        bank: &Arc<Bank>,
+    ) -> TransactionSimulationResult {
+        let signers = vec![&self.user];
+        // let bank = Self::bank(instance);
+        let blockhash = bank.last_blockhash();
+
+        // println!("lookuptables: {:#?}", lookuptables.iter().map(|l| l.key).collect::<Vec<_>>());
+
+        let versionedMessage = V0(solana_sdk::message::v0::Message::try_compile(
+            &self.user.pubkey(),
+            txInstructions,
+            lookuptables,
+            blockhash,
+        )
+        .unwrap());
+        let tx = VersionedTransaction::try_new(versionedMessage, &signers).unwrap();
+        Self::simulate_transaction_svm(tx, bank.clone())
+    }
+    fn sanitize_transaction(
+        transaction: VersionedTransaction,
+        address_loader: impl AddressLoader,
+    ) -> RuntimeTransaction<SanitizedTransaction> {
+        
+        RuntimeTransaction::try_create(transaction, MessageHash::Compute, None, address_loader, &HashSet::new())
+            .map_err(|err| println!("invalid transaction: {err}"))
+            .unwrap()
+    }
+    pub fn simulate_transaction_svm(
+        transaction: VersionedTransaction,
+        bank: Arc<Bank>,
+    ) -> TransactionSimulationResult {
+        let sanitized_tx = Self::sanitize_transaction(transaction, &*bank);
+
+        // let start = Instant::now();
+        let tx_res = bank.simulate_transaction_unchecked(&sanitized_tx, false);
+        // let elapsed = start.elapsed().as_nanos();
+        // println!("svm elapsed {}ns", elapsed);
+
+        tx_res
     }
     pub fn run_top_routes(this: &Arc<JupBot>, edge_id: u32, atob: bool) ->bool {
         let mut bundle_sent = false;

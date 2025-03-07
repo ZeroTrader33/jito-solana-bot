@@ -34,8 +34,9 @@ use bank_bot::{
     BankBot
 };
 
-#[tokio::main]
-pub async fn main() {
+// #[tokio::main]
+// pub async fn main() {
+pub fn main() {
     // run_bot_v1().await;
     // run_bot_v2().await;
     // run_perps_bot();
@@ -43,20 +44,30 @@ pub async fn main() {
 }
 pub fn run_jup_bot() {
     println!("jup bot started!");
-    std::panic::set_hook(Box::new(|info| {
-        println!("Caught a panic: {:?}", info);
-      }));
 
     let jup_bot = Arc::new(jup_bot::JupBot::default());
     jup_bot.setup();
 
-    let jup_bot_clone = Arc::clone(&jup_bot);
+    std::panic::set_hook(Box::new(|info| {
+        println!("Caught a panic: {:?}", info);
+      }));
+
+    let jup_bot_gen_table = Arc::clone(&jup_bot);
+    let jup_bot_update = Arc::clone(&jup_bot);
+
+    let jup_bot_blockhash = Arc::clone(&jup_bot);
     let handle_blockhash = std::thread::spawn(move || {
-        jup_bot_clone.update_latest_blockhash();
+        jup_bot_blockhash.update_latest_blockhash();
     });
     let handle_update = std::thread::spawn(move || {
-        listen_account_update_jup(&jup_bot);
+        listen_account_update_jup(&jup_bot_update);
     });
+
+    loop {
+        let time = std::time::Instant::now();
+        JupBot::generate_inout_table(&jup_bot_gen_table);
+        println!("total gen time {}ms",time.elapsed().as_millis());
+    }
     handle_update.join().expect("account update thread panicked!");
 }
 pub fn run_perps_bot() {
