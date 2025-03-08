@@ -113,8 +113,6 @@ impl Default for JupBot {
     
     fn default() -> Self {
         let rpc_client = Arc::new(RpcClient::new_with_commitment(String::from(RPC_ENDPOINT), CommitmentConfig::processed()));
-        let payer = Keypair::from_base58_string("3CHTnatxwp9v5iyKWVbPRqkZ58uscDBFRFyC98kvGdjcCBcnK29srybSEBHfDJH5anRN4a2rwi5QrNG5fA2gix3H");
-        let tip_payer = Keypair::from_base58_string("5Ud2CTUwSVcNXgRk355HBwS7NhNu2sDipyCBKA22x9rFcz1CNRJ3oGjpjDAtGuKCaRrKDt9u7kwXPytrbS5bWSZP");
         Self {
             is_running: AtomicBool::new(false),
             last_blockhash_timestamp: AtomicU64::new(0),
@@ -126,13 +124,13 @@ impl Default for JupBot {
             mints: AtomicPtr::new(Box::into_raw(Box::new(Vec::new()))),
             mints_base_pairs: AtomicPtr::new(Box::into_raw(Box::new(HashMap::new()))),
             chunk2_routes: AtomicPtr::new(Box::into_raw(Box::new(HashMap::new()))),
-            payer,
-            tip_payer,
+            payer: signature::read_keypair_file("/mnt/wallet/payer.json").unwrap(),
+            tip_payer: signature::read_keypair_file("/mnt/wallet/tip_payer.json").unwrap(),
             bundle_sender: udp_proxy::BundleSender::create(),
             process_pair_cnt: AtomicU8::new(0),
             test_validator: Self::setup_validator(&rpc_client),
             rpc_client,
-            user: signature::read_keypair_file("/mnt/user.json").unwrap()
+            user: signature::read_keypair_file("/mnt/wallet/user.json").unwrap()
         }
     }
 }
@@ -396,6 +394,7 @@ impl JupSwapEdge {
 
     }
     pub fn calc_amount_out_ab(&mut self, jup_bot: &JupBot, value: u64, bank: &Arc<Bank>) -> (u64, u64) {
+
         let input_amount = self.price_a * value;
         self.update_amount(input_amount, true);
 
@@ -419,6 +418,7 @@ impl JupSwapEdge {
         (input_amount, 0)
     }
     pub fn calc_amount_out_ba(&mut self, jup_bot: &JupBot, value: u64, bank: &Arc<Bank>) -> (u64, u64) {
+
         let input_amount = self.price_b * value;
         self.update_amount(input_amount, false);
 
@@ -448,7 +448,6 @@ impl JupSwapEdge {
             .read()
             .unwrap()
             .working_bank();
-        bank.unfreeze_for_ledger_tool();
 
         let mut pubkeys = vec![];
         for account_meta in self.swap_ix_a_to_b.accounts.iter() {
@@ -466,6 +465,7 @@ impl JupSwapEdge {
             let account_res = jup_bot.rpc_client.get_account(pubkey);
             if account_res.is_ok() {
                 let account = account_res.unwrap();
+                bank.unfreeze_for_ledger_tool();
                 bank.store_account(&pubkey, &AccountSharedData::from(account.clone()));
                 // if account.executable {
                 //     if let Ok(UpgradeableLoaderState::Program {
@@ -487,6 +487,7 @@ impl JupSwapEdge {
         if mint_a_res.is_ok() {
             let mint_a = mint_a_res.unwrap();
             let account_data = JupBot::get_token_acount(mint_a_key, jup_bot.user.pubkey(), 0, mint_a.owner);
+            bank.unfreeze_for_ledger_tool();
             bank.store_account(&Pubkey::from_str(&self.ata_a).unwrap(), &account_data);
         }
         
@@ -496,11 +497,12 @@ impl JupSwapEdge {
         if mint_b_res.is_ok() {
             let mint_b = mint_b_res.unwrap();
             let account_data = JupBot::get_token_acount(mint_b_key, jup_bot.user.pubkey(), 0, mint_b.owner);
+            bank.unfreeze_for_ledger_tool();
             bank.store_account(&Pubkey::from_str(&self.ata_b).unwrap(), &account_data);
         }
         
         
-
+        bank.unfreeze_for_ledger_tool();
         bank.store_account(
             &jup_bot.user.pubkey(),
             &AccountSharedData::new(
@@ -512,40 +514,41 @@ impl JupSwapEdge {
 
         let max_usd_to_send = JupBot::get_max_usd();
         let min_usd_to_send = 1u64;
+        let step = 3;
         let mut table_ab = vec![(0u64, 0u64)];
         let mut table_ba = vec![(0u64, 0u64)];
-        for usd_to_send in min_usd_to_send..max_usd_to_send {
-            let inout_ab = self.calc_amount_out_ab(jup_bot, usd_to_send, &bank);
-            let inout_ba = self.calc_amount_out_ba(jup_bot, usd_to_send, &bank);
+        for usd_to_send in min_usd_to_send..(max_usd_to_send/step) {
+            // println!("calc_amount_out - {} / {}", usd_to_send, max_usd_to_send);
+            let inout_ab = self.calc_amount_out_ab(jup_bot, usd_to_send * step, &bank);
+            let inout_ba = self.calc_amount_out_ba(jup_bot, usd_to_send * step, &bank);
             table_ab.push(inout_ab);
             table_ba.push(inout_ba);
-            break;
         }
 
-        let serialized_content = serde_json::to_string(&*table_ab).unwrap();
-        println!("saving result to file");
-        let file_path = format!("/mnt/table/{}-ab.json", self.pool);
-        let mut inout_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(file_path)
-            .expect("error when creating file");
-        inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
-        inout_file.flush().expect("error when fluxh");
+        // let serialized_content = serde_json::to_string(&*table_ab).unwrap();
+        // println!("saving result to file");
+        // let file_path = format!("/mnt/table/{}-ab.json", self.pool);
+        // let mut inout_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .truncate(true)
+        //     .open(file_path)
+        //     .expect("error when creating file");
+        // inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
+        // inout_file.flush().expect("error when fluxh");
 
-        let serialized_content = serde_json::to_string(&*table_ba).unwrap();
-        println!("saving result to file");
-        let file_path = format!("/mnt/table/{}-ba.json", self.pool);
-        let mut inout_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(file_path)
-            .expect("error when creating file");
-        inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
-        inout_file.flush().expect("error when fluxh");
-        println!("saved result to file");
+        // let serialized_content = serde_json::to_string(&*table_ba).unwrap();
+        // println!("saving result to file");
+        // let file_path = format!("/mnt/table/{}-ba.json", self.pool);
+        // let mut inout_file = OpenOptions::new()
+        //     .create(true)
+        //     .write(true)
+        //     .truncate(true)
+        //     .open(file_path)
+        //     .expect("error when creating file");
+        // inout_file.write_all(serialized_content.as_bytes()).expect("error to write");
+        // inout_file.flush().expect("error when fluxh");
+        // println!("saved result to file");
 
     }
     
@@ -619,11 +622,12 @@ impl JupBot {
     }
     pub fn generate_inout_table(this: &Arc<JupBot>) {
         let bot_edges = unsafe{&mut * this.edges.load(Ordering::SeqCst)};
-        for (edge_id, edge) in bot_edges.iter_mut() {
-            // let time = std::time::Instant::now();
+        let total_len = bot_edges.len();
+        for (index, (_edge_id, edge)) in bot_edges.iter_mut().enumerate() {
+            let time = std::time::Instant::now();
             edge.generate_inout_table(this);
-            std::thread::sleep(Duration::from_millis(20000000));
-            // println!("edge gen time {}ns",time.elapsed().as_nanos());
+            // std::thread::sleep(Duration::from_millis(20000000));
+            println!("{} / {} , edge gen time {}ns",index, total_len, time.elapsed().as_nanos());
             
         }
     }
@@ -659,10 +663,10 @@ impl JupBot {
             // .rpc_port(9901)
             .start();
         println!("test validator launched!");
-        let bank_forks = test_validator.bank_forks();
-        let bank = bank_forks.as_ref().read().unwrap().working_bank();
-        println!("Loaded Programs:");
-        println!("Program: {} | loaded: {}", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", bank.get_account(&Pubkey::from_str("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4").unwrap()).is_some());
+        // let bank_forks = test_validator.bank_forks();
+        // let bank = bank_forks.as_ref().read().unwrap().working_bank();
+        // println!("Loaded Programs:");
+        // println!("Program: {} | loaded: {}", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", bank.get_account(&Pubkey::from_str("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4").unwrap()).is_some());
         test_validator
     }
     pub fn setup(&self) {
@@ -787,6 +791,7 @@ impl JupBot {
         let buf = &mut data[position..];
         let len = replace_vec.len().min(buf.len());
         buf[..len].copy_from_slice(&replace_vec[..len]);
+        bank.unfreeze_for_ledger_tool();
         bank.store_account(key, &shared_data);
     }
     pub fn bank(&self) -> Arc<Bank> {

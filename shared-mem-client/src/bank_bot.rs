@@ -2342,11 +2342,11 @@ impl Default for BankBot {
           .enable_all()
           .build()
           .expect("Runtime");
-        let payer = Keypair::from_base58_string("3CHTnatxwp9v5iyKWVbPRqkZ58uscDBFRFyC98kvGdjcCBcnK29srybSEBHfDJH5anRN4a2rwi5QrNG5fA2gix3H");
-        let tip_payer = Keypair::from_base58_string("5Ud2CTUwSVcNXgRk355HBwS7NhNu2sDipyCBKA22x9rFcz1CNRJ3oGjpjDAtGuKCaRrKDt9u7kwXPytrbS5bWSZP");
+        let payer = signature::read_keypair_file("/mnt/wallet/payer.json").unwrap();
+        let tip_payer = signature::read_keypair_file("/mnt/wallet/tip_payer.json").unwrap();
         let rpc_client = Arc::new(RpcClient::new_with_commitment(String::from(RPC_ENDPOINT), CommitmentConfig::processed()));
 
-        let check_payer = Keypair::from_base58_string("3bJrva1qK8H1tpbVh1HcyoWNFYSK351b51D9zbXTUJQgGNXkiJxvMTjBxgGWW9cPKPEhoz8AF1Qc2yekKUJyhi7B");
+        let check_payer = signature::read_keypair_file("/mnt/wallet/user.json").unwrap();
         // let pubkey = check_payer.pubkey();
 
         let account_metas = vec![
