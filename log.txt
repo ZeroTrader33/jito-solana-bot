@@ -1,0 +1,184 @@
+bin array idx 0 - -74, bin_step: 4
+bin array idx 1 - -30, bin_step: 10
+bin array idx 2 - -15, bin_step: 20
+bin array idx 3 - -4, bin_step: 80
+bin array idx 4 - -6, bin_step: 50
+bin array idx 5 - -4, bin_step: 80
+bin array idx 6 - -60, bin_step: 5
+bin array idx 7 - -3, bin_step: 100
+bin array idx 8 - -296, bin_step: 1
+bin array idx 9 - -6, bin_step: 50
+bin array idx 10 - -148, bin_step: 2
+bin array idx 11 - -19, bin_step: 16
+bin array idx 12 - -30, bin_step: 10
+bin array idx 13 - -37, bin_step: 8
+bin array idx 14 - -3, bin_step: 100
+bin array idx 15 - -19, bin_step: 16
+bin array idx 16 - -3, bin_step: 100
+bin array idx 17 - -3, bin_step: 125
+bin array idx 18 - -3, bin_step: 125
+bin array idx 19 - -30, bin_step: 10
+bin array idx 20 - -3, bin_step: 100
+bin array idx 21 - -37, bin_step: 8
+bin array idx 22 - -10, bin_step: 30
+bin array idx 23 - -6, bin_step: 50
+bin array idx 24 - -1, bin_step: 400
+bin array idx 25 - -4, bin_step: 80
+bin array idx 26 - -37, bin_step: 8
+bin array idx 27 - -3, bin_step: 100
+bin array idx 28 - -20, bin_step: 15
+bin array idx 29 - -4, bin_step: 75
+to_high true, low amount 2083532428, fee 0, fee rate 0
+to_high true, amount_out 16587104956
+to_high true, low amount 1000000000, fee 0, fee rate 0
+to_high true, amount_out 7961049577
+17=> amount_x: 0, amount_y: 18130991, bin_price: 73628050
+17=> amount_x: 0, amount_y: 18130991, bin_price: 74548401
+17=> amount_x: 0, amount_y: 18130991, bin_price: 75480256
+17=> amount_x: 0, amount_y: 18130991, bin_price: 76423759
+17=> amount_x: 0, amount_y: 18130991, bin_price: 77379056
+17=> amount_x: 0, amount_y: 18130991, bin_price: 78346294
+17=> amount_x: 0, amount_y: 18130991, bin_price: 79325623
+17=> amount_x: 0, amount_y: 162528938, bin_price: 80317193
+17=> amount_x: 0, amount_y: 162528938, bin_price: 81321158
+17=> amount_x: 0, amount_y: 165122246, bin_price: 82337673
+17=> amount_x: 0, amount_y: 258905775, bin_price: 83366894
+17=> amount_x: 0, amount_y: 401986059, bin_price: 84408980
+17=> amount_x: 0, amount_y: 401986060, bin_price: 85464092
+17=> amount_x: 0, amount_y: 553643401, bin_price: 86532393
+17=> amount_x: 0, amount_y: 551276594, bin_price: 87614048
+17=> amount_x: 0, amount_y: 548052643, bin_price: 88709224
+17=> amount_x: 0, amount_y: 698351251, bin_price: 89818089
+17=> amount_x: 0, amount_y: 717219493, bin_price: 90940815
+17=> amount_x: 0, amount_y: 973544509, bin_price: 92077576
+17=> amount_x: 0, amount_y: 1227952019, bin_price: 93228545
+17=> amount_x: 0, amount_y: 1226114955, bin_price: 94393902
+17=> amount_x: 0, amount_y: 1239317045, bin_price: 95573826
+17=> amount_x: 0, amount_y: 1236546041, bin_price: 96768499
+17=> amount_x: 0, amount_y: 1273634253, bin_price: 97978105
+17=> amount_x: 0, amount_y: 1282311485, bin_price: 99202831
+17=> amount_x: 0, amount_y: 1329681080, bin_price: 100442867
+17=> amount_x: 0, amount_y: 1388183324, bin_price: 101698402
+17=> amount_x: 0, amount_y: 1381153437, bin_price: 102969632
+17=> amount_x: 0, amount_y: 1377569610, bin_price: 104256753
+17=> amount_x: 0, amount_y: 1450804649, bin_price: 105559962
+17=> amount_x: 0, amount_y: 1526863690, bin_price: 106879462
+17=> amount_x: 0, amount_y: 1517594168, bin_price: 108215455
+17=> amount_x: 0, amount_y: 1523966240, bin_price: 109568148
+17=> amount_x: 0, amount_y: 1519608286, bin_price: 110937750
+17=> amount_x: 0, amount_y: 1509678282, bin_price: 112324472
+17=> amount_x: 0, amount_y: 1501302795, bin_price: 113728528
+17=> amount_x: 0, amount_y: 1524051754, bin_price: 115150135
+17=> amount_x: 0, amount_y: 1601304691, bin_price: 116589511
+17=> amount_x: 0, amount_y: 1696240204, bin_price: 118046880
+17=> amount_x: 0, amount_y: 1739385338, bin_price: 119522466
+17=> amount_x: 0, amount_y: 1738851594, bin_price: 121016497
+17=> amount_x: 0, amount_y: 2089175250, bin_price: 122529203
+17=> amount_x: 0, amount_y: 2082102522, bin_price: 124060818
+17=> amount_x: 4451, amount_y: 2083532428, bin_price: 125611578
+17=> amount_x: 16770716165, amount_y: 0, bin_price: 127181723
+17=> amount_x: 16550376460, amount_y: 0, bin_price: 128771495
+17=> amount_x: 16625023438, amount_y: 0, bin_price: 130381138
+17=> amount_x: 16379925365, amount_y: 0, bin_price: 132010903
+17=> amount_x: 16264021767, amount_y: 0, bin_price: 133661039
+17=> amount_x: 15938376557, amount_y: 0, bin_price: 135331802
+17=> amount_x: 15888133010, amount_y: 0, bin_price: 137023450
+17=> amount_x: 15751990373, amount_y: 0, bin_price: 138736243
+17=> amount_x: 15528809658, amount_y: 0, bin_price: 140470446
+17=> amount_x: 15608157908, amount_y: 0, bin_price: 142226326
+17=> amount_x: 23460626364, amount_y: 0, bin_price: 144004155
+17=> amount_x: 15205982316, amount_y: 0, bin_price: 145804207
+17=> amount_x: 15136145806, amount_y: 0, bin_price: 147626760
+17=> amount_x: 15116116327, amount_y: 0, bin_price: 149472094
+17=> amount_x: 15076932254, amount_y: 0, bin_price: 151340496
+17=> amount_x: 15042998805, amount_y: 0, bin_price: 153232252
+17=> amount_x: 15008460600, amount_y: 0, bin_price: 155147655
+17=> amount_x: 14972237196, amount_y: 0, bin_price: 157087001
+17=> amount_x: 14935365120, amount_y: 0, bin_price: 159050588
+17=> amount_x: 14905492476, amount_y: 0, bin_price: 161038721
+17=> amount_x: 14858277855, amount_y: 0, bin_price: 163051705
+17=> amount_x: 14816558004, amount_y: 0, bin_price: 165089851
+17=> amount_x: 14773891855, amount_y: 0, bin_price: 167153474
+17=> amount_x: 14618123734, amount_y: 0, bin_price: 169242892
+17=> amount_x: 14569829113, amount_y: 0, bin_price: 171358429
+17=> amount_x: 14523350029, amount_y: 0, bin_price: 173500409
+swap SwapCase {
+    index: 17,
+    amount_in: 1000000000,
+    atob: false,
+}
+18=> amount_x: 0, amount_y: 0, bin_price: 73628050
+18=> amount_x: 0, amount_y: 0, bin_price: 74548401
+18=> amount_x: 0, amount_y: 0, bin_price: 75480256
+18=> amount_x: 0, amount_y: 0, bin_price: 76423759
+18=> amount_x: 0, amount_y: 72366671, bin_price: 77379056
+18=> amount_x: 0, amount_y: 72366671, bin_price: 78346294
+18=> amount_x: 0, amount_y: 72366671, bin_price: 79325623
+18=> amount_x: 0, amount_y: 72366671, bin_price: 80317193
+18=> amount_x: 0, amount_y: 72366671, bin_price: 81321158
+18=> amount_x: 0, amount_y: 72366672, bin_price: 82337673
+18=> amount_x: 0, amount_y: 76286397, bin_price: 83366894
+18=> amount_x: 0, amount_y: 80387224, bin_price: 84408980
+18=> amount_x: 0, amount_y: 80492220, bin_price: 85464092
+18=> amount_x: 0, amount_y: 81222187, bin_price: 86532393
+18=> amount_x: 0, amount_y: 81437469, bin_price: 87614048
+18=> amount_x: 0, amount_y: 82333146, bin_price: 88709224
+18=> amount_x: 0, amount_y: 82619167, bin_price: 89818089
+18=> amount_x: 0, amount_y: 106588275, bin_price: 90940815
+18=> amount_x: 0, amount_y: 111087344, bin_price: 92077576
+18=> amount_x: 0, amount_y: 118586435, bin_price: 93228545
+18=> amount_x: 0, amount_y: 122844085, bin_price: 94393902
+18=> amount_x: 0, amount_y: 123460295, bin_price: 95573826
+18=> amount_x: 0, amount_y: 123460295, bin_price: 96768499
+18=> amount_x: 0, amount_y: 123460296, bin_price: 97978105
+18=> amount_x: 0, amount_y: 123460296, bin_price: 99202831
+18=> amount_x: 0, amount_y: 124427456, bin_price: 100442867
+18=> amount_x: 0, amount_y: 124721572, bin_price: 101698402
+18=> amount_x: 0, amount_y: 124721570, bin_price: 102969632
+18=> amount_x: 0, amount_y: 125836263, bin_price: 104256753
+18=> amount_x: 0, amount_y: 126490556, bin_price: 105559962
+18=> amount_x: 0, amount_y: 126677435, bin_price: 106879462
+18=> amount_x: 0, amount_y: 127000836, bin_price: 108215455
+18=> amount_x: 0, amount_y: 127162599, bin_price: 109568148
+18=> amount_x: 0, amount_y: 127314028, bin_price: 110937750
+18=> amount_x: 0, amount_y: 127622976, bin_price: 112324472
+18=> amount_x: 0, amount_y: 128854782, bin_price: 113728528
+18=> amount_x: 0, amount_y: 250605298, bin_price: 115150135
+18=> amount_x: 0, amount_y: 250662122, bin_price: 116589511
+18=> amount_x: 0, amount_y: 250696223, bin_price: 118046880
+18=> amount_x: 0, amount_y: 250731600, bin_price: 119522466
+18=> amount_x: 0, amount_y: 254207761, bin_price: 121016497
+18=> amount_x: 0, amount_y: 373343932, bin_price: 122529203
+18=> amount_x: 0, amount_y: 434805837, bin_price: 124060818
+18=> amount_x: 0, amount_y: 440094377, bin_price: 125611578
+18=> amount_x: 3465108336, amount_y: 273, bin_price: 127181723
+18=> amount_x: 3446453247, amount_y: 0, bin_price: 128771495
+18=> amount_x: 3404030977, amount_y: 0, bin_price: 130381138
+18=> amount_x: 3375511360, amount_y: 0, bin_price: 132010903
+18=> amount_x: 3467232851, amount_y: 0, bin_price: 133661039
+18=> amount_x: 3433500023, amount_y: 0, bin_price: 135331802
+18=> amount_x: 3391349054, amount_y: 0, bin_price: 137023450
+18=> amount_x: 3384596524, amount_y: 0, bin_price: 138736243
+18=> amount_x: 3343173904, amount_y: 0, bin_price: 140470446
+18=> amount_x: 3304862623, amount_y: 0, bin_price: 142226326
+18=> amount_x: 3282192198, amount_y: 0, bin_price: 144004155
+18=> amount_x: 3283877683, amount_y: 0, bin_price: 145804207
+18=> amount_x: 3383170531, amount_y: 0, bin_price: 147626760
+18=> amount_x: 3448092141, amount_y: 0, bin_price: 149472094
+18=> amount_x: 3404238774, amount_y: 0, bin_price: 151340496
+18=> amount_x: 3361229703, amount_y: 0, bin_price: 153232252
+18=> amount_x: 3396433078, amount_y: 0, bin_price: 155147655
+18=> amount_x: 3401178525, amount_y: 0, bin_price: 157087001
+18=> amount_x: 3364906190, amount_y: 0, bin_price: 159050588
+18=> amount_x: 4658833957, amount_y: 0, bin_price: 161038721
+18=> amount_x: 4597458242, amount_y: 0, bin_price: 163051705
+18=> amount_x: 4541649958, amount_y: 0, bin_price: 165089851
+18=> amount_x: 4477359188, amount_y: 0, bin_price: 167153474
+18=> amount_x: 4436331095, amount_y: 0, bin_price: 169242892
+18=> amount_x: 4405323338, amount_y: 0, bin_price: 171358429
+18=> amount_x: 4344424305, amount_y: 0, bin_price: 173500409
+swap SwapCase {
+    index: 18,
+    amount_in: 7961049577,
+    atob: true,
+}

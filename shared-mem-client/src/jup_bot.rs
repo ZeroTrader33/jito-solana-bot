@@ -12,8 +12,19 @@ use {
       TryFutureExt,
     }, 
     // hwloc::{CpuSet, Topology, CPUBIND_THREAD}, 
-    num_traits::Pow, rand::seq::SliceRandom, serde::{Deserialize, Serialize}, solana_account_decoder::{UiAccount, UiAccountData, UiAccountEncoding, UiDataSliceConfig}, solana_client::{client_error::Result as ClientResult, rpc_client::RpcClient, rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig, RpcSimulateTransactionTokenAmountsConfig}, rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType}, rpc_response::{RpcResult, RpcSimulateTransactionResult}}, solana_measure::{measure::Measure, measure_us}, solana_rpc_client_api::bundles::{RpcSimulateBundleConfig, RpcSimulateBundleResult}, solana_sdk::{
-        account::{AccountSharedData, ReadableAccount}, address_lookup_table::{self, AddressLookupTableAccount}, bundle::VersionedBundle, commitment_config::{CommitmentConfig, CommitmentLevel}, compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::{AccountMeta, Instruction}, message::{AddressLoader, VersionedMessage::V0}, pubkey::Pubkey, signature::{self, Keypair, Signature, Signer}, signer::SignerError, system_instruction::transfer, transaction::VersionedTransaction
+    num_traits::Pow, rand::seq::SliceRandom, serde::{Deserialize, Serialize}, 
+    solana_account_decoder::{UiAccount, UiAccountData, UiAccountEncoding, UiDataSliceConfig}, 
+    solana_client::{client_error::Result as ClientResult, rpc_client::RpcClient, rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig, RpcSimulateTransactionTokenAmountsConfig}, rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType}, 
+    rpc_response::{RpcResult, RpcSimulateTransactionResult}}, solana_measure::{measure::Measure, measure_us}, 
+    solana_rpc_client_api::bundles::{RpcSimulateBundleConfig, RpcSimulateBundleResult}, 
+    
+    solana_sdk::{
+        account::{AccountSharedData, ReadableAccount}, address_lookup_table::{self, AddressLookupTableAccount}, 
+        bundle::VersionedBundle, commitment_config::{CommitmentConfig, CommitmentLevel}, 
+        compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::{AccountMeta, Instruction}, 
+        message::{AddressLoader, VersionedMessage::V0}, 
+        
+        pubkey::Pubkey, signature::{self, Keypair, Signature, Signer}, signer::SignerError, system_instruction::transfer, transaction::VersionedTransaction
     }, std::{
         collections::HashMap, fmt, fs::{self, File, OpenOptions}, io::{Read, Write}, ops::{Add, Mul}, str::FromStr, sync::{
             atomic::{AtomicBool, AtomicPtr, AtomicU64, AtomicU8, AtomicUsize, Ordering}, Arc, Mutex, RwLock
@@ -524,7 +535,7 @@ impl JupSwapEdge {
             table_ab.push(inout_ab);
             table_ba.push(inout_ba);
         }
-
+        
         // let serialized_content = serde_json::to_string(&*table_ab).unwrap();
         // println!("saving result to file");
         // let file_path = format!("/mnt/table/{}-ab.json", self.pool);

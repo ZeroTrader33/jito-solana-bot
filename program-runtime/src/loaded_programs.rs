@@ -908,7 +908,8 @@ impl<FG: ForkGraph> ProgramCache<FG> {
                             ) => {}
                             _ => {
                                 // Something is wrong, I can feel it ...
-                                error!("ProgramCache::assign_program() failed key={:?} existing={:?} entry={:?}", key, slot_versions, entry);
+                                println!("ProgramCache::assign_program() failed key={:?} existing={:?} entry={:?}", key, slot_versions, entry);
+                                // error!("ProgramCache::assign_program() failed key={:?} existing={:?} entry={:?}", key, slot_versions, entry);
                                 debug_assert!(false, "Unexpected replacement of an entry");
                                 self.stats.replacements.fetch_add(1, Ordering::Relaxed);
                                 return true;

@@ -459,7 +459,7 @@ fn configure_banking_trace_dir_byte_limit(
 
 pub fn main() {
 
-    let cpus_to_use: Vec<usize> = (7..37).collect();
+    let cpus_to_use: Vec<usize> = (2..31).collect();
     affinity::set_thread_affinity(cpus_to_use).expect("Failed to set CPU affinity for validator main thread");
     let cpus_using = affinity::get_thread_affinity().expect("Failed to get cpu affinity for validator main thread");
     if cpus_using.len() > 2 {

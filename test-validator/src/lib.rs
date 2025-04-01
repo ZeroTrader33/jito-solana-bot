@@ -121,7 +121,7 @@ pub struct TestValidatorGenesis {
     pubsub_config: PubSubConfig,
     rpc_ports: Option<(u16, u16)>, // (JsonRpc, JsonRpcPubSub), None == random ports
     warp_slot: Option<Slot>,
-    accounts: HashMap<Pubkey, AccountSharedData>,
+    pub accounts: HashMap<Pubkey, AccountSharedData>,
     upgradeable_programs: Vec<UpgradeableProgramInfo>,
     ticks_per_slot: Option<u64>,
     epoch_schedule: Option<EpochSchedule>,

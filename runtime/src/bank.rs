@@ -4909,6 +4909,8 @@ impl Bank {
     }
 
     pub fn store_accounts<'a>(&self, accounts: impl StorableAccounts<'a>) {
+        // self.unfreeze_for_ledger_tool(); // test purpose
+        
         assert!(!self.freeze_started());
         let mut m = Measure::start("stakes_cache.check_and_store");
         let new_warmup_cooldown_rate_epoch = self.new_warmup_cooldown_rate_epoch();
