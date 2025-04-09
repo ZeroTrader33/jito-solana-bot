@@ -1,0 +1,1 @@
+{"name":"protobuf-src","vers":"2.1.1+27.1","deps":[{"name":"cmake","req":"^0.1.53","features":[],"optional":false,"default_features":true,"target":null,"kind":"build","package":null}],"cksum":"6217c3504da19b85a3a4b2e9a5183d635822d83507ba0986624b5c05b83bfc40","features":{},"yanked":false}

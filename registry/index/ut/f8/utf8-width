@@ -1,0 +1,1 @@
+{"name":"utf8-width","vers":"0.1.7","deps":[{"name":"bencher","req":"^0.1.5","features":[],"optional":false,"default_features":true,"target":null,"kind":"dev","package":null}],"cksum":"86bd8d4e895da8537e5315b8254664e6b769c4ff3db18321b297a1e7004392e3","features":{},"yanked":false}

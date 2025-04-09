@@ -1,0 +1,1 @@
+{"name":"fragile","vers":"2.0.0","deps":[{"name":"slab","req":"^0.4.5","features":[],"optional":true,"default_features":true,"target":null,"kind":null,"package":null}],"cksum":"6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa","features":{"slab":["dep:slab"]},"yanked":false}

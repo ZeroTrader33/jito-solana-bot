@@ -1,0 +1,1 @@
+{"name":"derivation-path","vers":"0.2.0","deps":[],"cksum":"6e5c37193a1db1d8ed868c03ec7b152175f26160a5b740e5e484143877e0adf0","features":{"default":["std"],"std":[]},"yanked":false}
