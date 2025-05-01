@@ -338,10 +338,18 @@ impl Runner {
     
         }
         
+        let matched_cases = vec![
+            "USDC-USDT".to_owned(),
+            "USDT-USDC".to_owned(),
+            "WETH-WBTC".to_owned(),
+            "WETH-USDC".to_owned(),
+            "WETH-USDT".to_owned(),
+            "WSOL-WETH".to_owned()
+        ];
 
         let mut test_result = Vec::new();
         for (test_case_name, test_case) in test_cases.iter() {
-            if !test_case_name.contains("WSOL-USDC")  && !test_case_name.contains("USDC-WSOL")  {
+            if !matched_cases.contains(&test_case_name) {
                 continue;
             }
             let mut test_case_result = Vec::new();

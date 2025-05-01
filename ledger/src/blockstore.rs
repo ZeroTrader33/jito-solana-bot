@@ -1380,7 +1380,6 @@ impl Blockstore {
             Err(e) => panic!("Purge database operations failed {}", e),
         }
     }
-
     pub fn insert_shreds(
         &self,
         shreds: Vec<Shred>,
@@ -1399,6 +1398,25 @@ impl Blockstore {
         )?;
         Ok(insert_results.completed_data_set_infos)
     }
+    // pub fn insert_shreds(
+    //     &self,
+    //     shreds_param: Vec<Shred>,
+    //     leader_schedule: Option<&LeaderScheduleCache>,
+    //     is_trusted: bool,
+    // ) -> Result<Vec<CompletedDataSetInfo>> {
+    //     let shreds: Vec<Shred> = Vec::new();
+    //     let shreds_len = shreds.len();
+    //     let insert_results = self.do_insert_shreds(
+    //         shreds,
+    //         vec![false; shreds_len],
+    //         leader_schedule,
+    //         is_trusted,
+    //         None, // retransmit-sender
+    //         &ReedSolomonCache::default(),
+    //         &mut BlockstoreInsertionMetrics::default(),
+    //     )?;
+    //     Ok(insert_results.completed_data_set_infos)
+    // }
 
     #[cfg(test)]
     fn insert_shred_return_duplicate(
